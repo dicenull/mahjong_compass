@@ -109,7 +109,7 @@ class _Compass extends ConsumerWidget {
                         },
                         child: Text(
                           ref.watch(roundNameProvider),
-                          style: const TextStyle(fontSize: 40),
+                          style: const TextStyle(fontSize: 30),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -121,7 +121,7 @@ class _Compass extends ConsumerWidget {
                         },
                         child: Text(
                           ref.watch(honbaNameProvider),
-                          style: const TextStyle(fontSize: 40),
+                          style: const TextStyle(fontSize: 30),
                         ),
                       ),
                     ],
