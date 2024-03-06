@@ -153,6 +153,8 @@ class _Compass extends ConsumerWidget {
 }
 
 class _Dice extends HookWidget {
+  final max = 6;
+
   @override
   Widget build(BuildContext context) {
     final isStop = useState(false);
@@ -191,9 +193,9 @@ class _Dice extends HookWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Die(n: nList.value[0], size: size),
+            Die(n: nList.value[0] + 1, size: size),
             const SizedBox(width: 16),
-            Die(n: nList.value[1], size: size),
+            Die(n: nList.value[1] + 1, size: size),
           ],
         ),
       ),

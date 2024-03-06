@@ -1,38 +1,4 @@
-import 'dart:async';
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-
-const max = 6;
-
-class RollDie extends HookWidget {
-  const RollDie(this.size, {super.key});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final rnd = useMemoized(() => Random());
-    final n = useState(rnd.nextInt(max));
-    useEffect(
-      () {
-        final timer = Timer.periodic(
-          const Duration(milliseconds: 100),
-          (timer) {
-            // 前と同じ値にならないようにする
-            n.value = (n.value + rnd.nextInt(max - 1) + 1) % max;
-          },
-        );
-
-        return timer.cancel;
-      },
-      const [],
-    );
-
-    return Die(n: n.value + 1, size: size);
-  }
-}
 
 class Die extends StatelessWidget {
   const Die({super.key, required this.n, required this.size});
