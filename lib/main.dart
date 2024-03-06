@@ -1,4 +1,9 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:app/die.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 final roundProvider = StateProvider<int>((ref) => 0);
@@ -100,15 +105,7 @@ class _Compass extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Wrap(
-                      //   children: List.generate(
-                      //     6,
-                      //     (index) => Padding(
-                      //       padding: const EdgeInsets.all(8.0),
-                      //       child: _Die(n: index + 1, size: 40),
-                      //     ),
-                      //   ),
-                      // ),
+                      _Dice(),
                       ElevatedButton(
                         onPressed: () {
                           ref
@@ -155,73 +152,51 @@ class _Compass extends ConsumerWidget {
   }
 }
 
-class _Die extends StatelessWidget {
-  const _Die({required this.n, required this.size});
-
-  final int n;
-  final double size;
-
+class _Dice extends HookWidget {
   @override
   Widget build(BuildContext context) {
-    final dSize = size * .2;
+    final isStop = useState(false);
+    const size = 40.0;
+    final rnd = useMemoized(() => Random());
+    final nList = useState([rnd.nextInt(max), rnd.nextInt(max)]);
 
-    const none = SizedBox.shrink();
+    useEffect(
+      () {
+        if (isStop.value) {
+          return () {};
+        }
 
-    return Container(
-      color: Colors.white,
-      height: size,
-      width: size,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              if (n == 4 || n == 5 || n == 6) _Dot(dSize) else none,
-              none,
-              if (n != 1) _Dot(dSize) else none,
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              if (n == 6) _Dot(dSize) else none,
-              if (n == 1 || n == 3 || n == 5)
-                _Dot(dSize, isRed: n == 1)
-              else
-                none,
-              if (n == 6) _Dot(dSize) else none,
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              if (n != 1) _Dot(dSize) else none,
-              none,
-              if (n == 4 || n == 5 || n == 6) _Dot(dSize) else none,
-            ],
-          ),
-        ],
-      ),
+        final timer = Timer.periodic(
+          const Duration(milliseconds: 100),
+          (timer) {
+            // 前と同じ値にならないようにする
+            nList.value = nList.value
+                .map((n) => n = (n + rnd.nextInt(max - 1) + 1) % max)
+                .toList();
+          },
+        );
+
+        return timer.cancel;
+      },
+      [isStop.value],
     );
-  }
-}
 
-class _Dot extends StatelessWidget {
-  const _Dot(this.size, {this.isRed = false});
-
-  final double size;
-  final bool isRed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: isRed ? Colors.red : Colors.black,
+    return GestureDetector(
+      onTap: () {
+        isStop.value = !isStop.value;
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Die(n: nList.value[0], size: size),
+            const SizedBox(width: 16),
+            Die(n: nList.value[1], size: size),
+          ],
+        ),
       ),
-      width: size,
-      height: size,
     );
   }
 }
