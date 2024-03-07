@@ -158,7 +158,7 @@ class _Compass extends ConsumerWidget {
 final numberListProvider =
     NotifierProvider<NumberListNotifier, List<int>>(NumberListNotifier.new);
 
-final isDone = StateProvider((_) => false);
+final isStopProvider = StateProvider((_) => false);
 
 class NumberListNotifier extends Notifier<List<int>> {
   final _max = 6;
@@ -179,12 +179,12 @@ class NumberListNotifier extends Notifier<List<int>> {
 class _Dice extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isStop = useState(false);
     const size = 40.0;
+    final isStop = ref.watch(isStopProvider);
 
     useEffect(
       () {
-        if (isStop.value) {
+        if (isStop) {
           return () {};
         }
 
@@ -194,16 +194,22 @@ class _Dice extends HookConsumerWidget {
             ref.read(numberListProvider.notifier).update();
           },
         );
+        final stopTimer = Timer(
+          const Duration(milliseconds: 700),
+          () => ref.read(isStopProvider.notifier).update((state) => true),
+        );
 
-        return timer.cancel;
+        return () {
+          timer.cancel();
+          stopTimer.cancel();
+        };
       },
-      [isStop.value],
+      [isStop],
     );
 
     return GestureDetector(
       onTap: () {
-        isStop.value = !isStop.value;
-        ref.read(isDone.notifier).update((state) => isStop.value);
+        ref.read(isStopProvider.notifier).update((state) => !state);
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -229,10 +235,10 @@ class _WindText extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size.shortestSide * .1;
-    final done = ref.watch(isDone);
+    final isStop = ref.watch(isStopProvider);
     final number =
         ref.watch(numberListProvider).fold(0, (prev, n) => prev + n + 1);
-    final isShow = (done && ((number + 3) % 4 == wind.index));
+    final isShow = (isStop && ((number + 3) % 4 == wind.index));
 
     return RotatedBox(
       quarterTurns: wind.turns,
