@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:app/die.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_portal/flutter_portal.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 final roundProvider = StateProvider<int>((ref) => 0);
@@ -50,16 +51,18 @@ class App extends StatelessWidget {
     final size = MediaQuery.of(context).size.shortestSide;
     final centerPadding = size * .4;
 
-    return MaterialApp(
-      home: Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Container(
-              color: Colors.blueGrey,
-              child: _Compass(centerPadding),
+    return Portal(
+      child: MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Container(
+                color: Colors.blueGrey,
+                child: _Compass(centerPadding),
+              ),
             ),
           ),
         ),
@@ -218,7 +221,7 @@ class _Dice extends HookConsumerWidget {
   }
 }
 
-class _WindText extends ConsumerWidget {
+class _WindText extends HookConsumerWidget {
   const _WindText(this.wind);
 
   final Wind wind;
@@ -227,37 +230,50 @@ class _WindText extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size.shortestSide * .1;
     final done = ref.watch(isDone);
-    final number = ref
-        .watch(numberListProvider)
-        .fold(0, (previousValue, element) => previousValue + element);
+    final number =
+        ref.watch(numberListProvider).fold(0, (prev, n) => prev + n + 1);
+    final isShow = (done && ((number + 3) % 4 == wind.index));
 
     return RotatedBox(
       quarterTurns: wind.turns,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            wind.name,
-            style: TextStyle(
-              fontSize: size,
-              color: wind == Wind.east ? Colors.red : Colors.white,
-            ),
-          ),
-          if (done && ((number + 5) % 4 == wind.index))
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
+      child: PortalTarget(
+        visible: isShow,
+        anchor: Aligned(
+          follower: Alignment.bottomLeft,
+          target: Alignment.bottomRight,
+        ),
+        portalFollower: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '$number',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: size,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Container(
                 height: 10,
-                width: size,
+                width: size * 3,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
                   color: Colors.white,
                 ),
               ),
-            )
-          else
-            const SizedBox(height: 10)
-        ],
+            ],
+          ),
+        ),
+        child: Text(
+          wind.name,
+          style: TextStyle(
+            fontSize: size,
+            color: wind == Wind.east ? Colors.red : Colors.white,
+          ),
+        ),
       ),
     );
   }
