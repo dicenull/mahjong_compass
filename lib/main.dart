@@ -152,15 +152,32 @@ class _Compass extends ConsumerWidget {
   }
 }
 
-class _Dice extends HookWidget {
-  final max = 6;
+final numberListProvider =
+    NotifierProvider<NumberListNotifier, List<int>>(NumberListNotifier.new);
+
+final isDone = StateProvider((_) => false);
+
+class NumberListNotifier extends Notifier<List<int>> {
+  final _max = 6;
+  final _rnd = Random();
 
   @override
-  Widget build(BuildContext context) {
+  List<int> build() {
+    return [_rnd.nextInt(_max), _rnd.nextInt(_max)];
+  }
+
+  void update() {
+    // 前と同じ値にならないようにする
+    state =
+        state.map((n) => n = (n + _rnd.nextInt(_max - 1) + 1) % _max).toList();
+  }
+}
+
+class _Dice extends HookConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final isStop = useState(false);
     const size = 40.0;
-    final rnd = useMemoized(() => Random());
-    final nList = useState([rnd.nextInt(max), rnd.nextInt(max)]);
 
     useEffect(
       () {
@@ -171,10 +188,7 @@ class _Dice extends HookWidget {
         final timer = Timer.periodic(
           const Duration(milliseconds: 100),
           (timer) {
-            // 前と同じ値にならないようにする
-            nList.value = nList.value
-                .map((n) => n = (n + rnd.nextInt(max - 1) + 1) % max)
-                .toList();
+            ref.read(numberListProvider.notifier).update();
           },
         );
 
@@ -186,6 +200,7 @@ class _Dice extends HookWidget {
     return GestureDetector(
       onTap: () {
         isStop.value = !isStop.value;
+        ref.read(isDone.notifier).update((state) => isStop.value);
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -193,9 +208,9 @@ class _Dice extends HookWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Die(n: nList.value[0] + 1, size: size),
+            Die(n: ref.watch(numberListProvider)[0] + 1, size: size),
             const SizedBox(width: 16),
-            Die(n: nList.value[1] + 1, size: size),
+            Die(n: ref.watch(numberListProvider)[1] + 1, size: size),
           ],
         ),
       ),
@@ -203,32 +218,56 @@ class _Dice extends HookWidget {
   }
 }
 
-class _WindText extends StatelessWidget {
+class _WindText extends ConsumerWidget {
   const _WindText(this.wind);
 
   final Wind wind;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size.shortestSide * .1;
+    final done = ref.watch(isDone);
+    final number = ref
+        .watch(numberListProvider)
+        .fold(0, (previousValue, element) => previousValue + element);
+
     return RotatedBox(
       quarterTurns: wind.turns,
-      child: Text(
-        wind.name,
-        style: TextStyle(
-          fontSize: size,
-          color: wind == Wind.east ? Colors.red : Colors.white,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            wind.name,
+            style: TextStyle(
+              fontSize: size,
+              color: wind == Wind.east ? Colors.red : Colors.white,
+            ),
+          ),
+          if (done && ((number + 5) % 4 == wind.index))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                height: 10,
+                width: size,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white,
+                ),
+              ),
+            )
+          else
+            const SizedBox(height: 10)
+        ],
       ),
     );
   }
 }
 
 enum Wind {
-  north,
   east,
   south,
-  west;
+  west,
+  north;
 
   String get name => switch (this) {
         Wind.north => '北',
