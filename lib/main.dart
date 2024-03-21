@@ -11,6 +11,8 @@ final roundProvider = StateProvider<int>((ref) => 0);
 
 final honbaProvider = StateProvider<int>((ref) => 0);
 
+final isDiceRollingProvider = StateProvider((ref) => true);
+
 final honbaNameProvider = Provider<String>((ref) {
   final honba = ref.watch(honbaProvider);
   return '$honba 本場';
@@ -110,12 +112,18 @@ class _Compass extends ConsumerWidget {
                     children: [
                       _Dice(),
                       ElevatedButton(
-                        onPressed: () {
-                          ref
-                              .read(roundProvider.notifier)
-                              .update((state) => state + 1);
-                          ref.read(honbaProvider.notifier).update((state) => 0);
-                        },
+                        onPressed: ref.watch(isDiceRollingProvider)
+                            ? null
+                            : () {
+                                ref
+                                    .read(roundProvider.notifier)
+                                    .update((state) => state + 1);
+                                ref
+                                    .read(honbaProvider.notifier)
+                                    .update((state) => 0);
+                                ref.read(isDiceRollingProvider.notifier).state =
+                                    true;
+                              },
                         child: Text(
                           ref.watch(roundNameProvider),
                           style: const TextStyle(fontSize: 30),
@@ -123,11 +131,15 @@ class _Compass extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       FilledButton(
-                        onPressed: () {
-                          ref
-                              .read(honbaProvider.notifier)
-                              .update((state) => state + 1);
-                        },
+                        onPressed: ref.watch(isDiceRollingProvider)
+                            ? null
+                            : () {
+                                ref
+                                    .read(honbaProvider.notifier)
+                                    .update((state) => state + 1);
+                                ref.read(isDiceRollingProvider.notifier).state =
+                                    true;
+                              },
                         child: Text(
                           ref.watch(honbaNameProvider),
                           style: const TextStyle(fontSize: 30),
@@ -185,6 +197,8 @@ class _Dice extends HookConsumerWidget {
     useEffect(
       () {
         if (isStop) {
+          Future.microtask(
+              () => ref.read(isDiceRollingProvider.notifier).state = false);
           return () {};
         }
 
@@ -209,6 +223,8 @@ class _Dice extends HookConsumerWidget {
 
     return GestureDetector(
       onTap: () {
+        if (!ref.read(isDiceRollingProvider)) return;
+
         ref.read(isStopProvider.notifier).update((state) => !state);
       },
       behavior: HitTestBehavior.opaque,
