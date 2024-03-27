@@ -2,44 +2,12 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:app/die.dart';
+import 'package:app/mahjong_controller.dart';
+import 'package:app/mahjong_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_portal/flutter_portal.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-final roundProvider = StateProvider<int>((ref) => 0);
-
-final honbaProvider = StateProvider<int>((ref) => 0);
-
-final isDiceRollingProvider = StateProvider((ref) => true);
-
-final honbaNameProvider = Provider<String>((ref) {
-  final honba = ref.watch(honbaProvider);
-  return '$honba 本場';
-});
-
-final roundNameProvider = Provider<String>((ref) {
-  final round = ref.watch(roundProvider);
-  return switch (round) {
-    0 => '東一局',
-    1 => '東二局',
-    2 => '東三局',
-    3 => '東四局',
-    4 => '南一局',
-    5 => '南二局',
-    6 => '南三局',
-    7 => '南四局',
-    8 => '西一局',
-    9 => '西二局',
-    10 => '西三局',
-    11 => '西四局',
-    12 => '北一局',
-    13 => '北二局',
-    14 => '北三局',
-    15 => '北四局',
-    _ => throw UnimplementedError(),
-  };
-});
 
 void main() {
   runApp(const ProviderScope(child: App()));
@@ -80,7 +48,8 @@ class _Compass extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final round = ref.watch(roundProvider);
+    final round =
+        ref.watch(mahjongControllerProvider.select((value) => value.round));
 
     return Center(
       child: AnimatedRotation(
@@ -112,18 +81,15 @@ class _Compass extends ConsumerWidget {
                     children: [
                       _Dice(),
                       ElevatedButton(
-                        onPressed: ref.watch(isDiceRollingProvider)
-                            ? null
-                            : () {
-                                ref
-                                    .read(roundProvider.notifier)
-                                    .update((state) => state + 1);
-                                ref
-                                    .read(honbaProvider.notifier)
-                                    .update((state) => 0);
-                                ref.read(isDiceRollingProvider.notifier).state =
-                                    true;
-                              },
+                        onPressed: switch (
+                            ref.watch(mahjongPhaseControllerProvider)) {
+                          MahjongPhase.ready => null,
+                          MahjongPhase.diceRolling => () {
+                              ref
+                                  .read(mahjongControllerProvider.notifier)
+                                  .nextRound();
+                            },
+                        },
                         child: Text(
                           ref.watch(roundNameProvider),
                           style: const TextStyle(fontSize: 30),
@@ -131,15 +97,15 @@ class _Compass extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
                       FilledButton(
-                        onPressed: ref.watch(isDiceRollingProvider)
-                            ? null
-                            : () {
-                                ref
-                                    .read(honbaProvider.notifier)
-                                    .update((state) => state + 1);
-                                ref.read(isDiceRollingProvider.notifier).state =
-                                    true;
-                              },
+                        onPressed: switch (
+                            ref.watch(mahjongPhaseControllerProvider)) {
+                          MahjongPhase.ready => null,
+                          MahjongPhase.diceRolling => () {
+                              ref
+                                  .read(mahjongControllerProvider.notifier)
+                                  .nextHonba();
+                            },
+                        },
                         child: Text(
                           ref.watch(honbaNameProvider),
                           style: const TextStyle(fontSize: 30),
@@ -197,8 +163,8 @@ class _Dice extends HookConsumerWidget {
     useEffect(
       () {
         if (isStop) {
-          Future.microtask(
-              () => ref.read(isDiceRollingProvider.notifier).state = false);
+          Future.microtask(() =>
+              ref.read(mahjongPhaseControllerProvider.notifier).restart());
           return () {};
         }
 
@@ -223,7 +189,10 @@ class _Dice extends HookConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        if (!ref.read(isDiceRollingProvider)) return;
+        if (ref.read(mahjongPhaseControllerProvider) ==
+            MahjongPhase.diceRolling) {
+          return;
+        }
 
         ref.read(isStopProvider.notifier).update((state) => !state);
       },
